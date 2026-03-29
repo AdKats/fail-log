@@ -275,7 +275,7 @@ namespace PRoConEvents
 
         public String GetPluginAuthor()
         {
-            return "PapaCharlie9, MorpheusX(AUT)";
+            return "PapaCharlie9, MorpheusX(AUT) (maintained by Prophet731)";
         }
 
         public String GetPluginWebsite()
