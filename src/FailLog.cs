@@ -1,4 +1,4 @@
-﻿/* FailLog.cs
+/* FailLog.cs
 
 by PapaCharlie9, MorpheusX(AUT)
 
@@ -20,20 +20,20 @@ DEALINGS IN THE SOFTWARE.
 */
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.Collections;
 using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Net;
 using System.Net.Mail;
 using System.Net.Mime;
-using System.Net;
 using System.Reflection;
-using System.Text.RegularExpressions;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Timers;
 using System.Web;
@@ -43,18 +43,17 @@ using System.Xml;
 using PRoCon.Core;
 using PRoCon.Core.Battlemap;
 using PRoCon.Core.Maps;
-using PRoCon.Core.Players.Items;
 using PRoCon.Core.Players;
-using PRoCon.Core.Plugin.Commands;
+using PRoCon.Core.Players.Items;
 using PRoCon.Core.Plugin;
+using PRoCon.Core.Plugin.Commands;
+/* Aliases */
+
+using CapturableEvent = PRoCon.Core.Events.CapturableEvents;
+using EventType = PRoCon.Core.Events.EventType;
 
 namespace PRoConEvents
 {
-    /* Aliases */
-
-    using EventType = PRoCon.Core.Events.EventType;
-    using CapturableEvent = PRoCon.Core.Events.CapturableEvents;
-
     /* Main Class */
 
     public class FailLog : PRoConPluginAPI, IPRoConPluginInterface
@@ -65,13 +64,13 @@ namespace PRoConEvents
 
         /* Constants & Statics */
 
-        public const int CRASH_COUNT_HEURISTIC = 24; // player count difference signifies a blaze dump
+        public const Int32 CRASH_COUNT_HEURISTIC = 24; // player count difference signifies a blaze dump
 
-        public const double CHECK_FOR_UPDATES_MINS = 12 * 60; // every 12 hours
+        public const Double CHECK_FOR_UPDATES_MINS = 12 * 60; // every 12 hours
 
-        public const double MAX_LIST_PLAYERS_SECS = 80; // should be at least every 30 seconds
+        public const Double MAX_LIST_PLAYERS_SECS = 80; // should be at least every 30 seconds
 
-        public const int MIN_UPDATE_USAGE_COUNT = 10; // minimum number of plugin updates in use
+        public const Int32 MIN_UPDATE_USAGE_COUNT = 10; // minimum number of plugin updates in use
 
         /* Classes */
 
@@ -81,49 +80,49 @@ namespace PRoConEvents
         */
 
         // General
-        private bool fIsEnabled;
-        private int fServerUptime = -1;
-        private bool fServerCrashed = false; // because fServerUptime >  fServerInfo.ServerUptime
+        private Boolean fIsEnabled;
+        private Int32 fServerUptime = -1;
+        private Boolean fServerCrashed = false; // because fServerUptime >  fServerInfo.ServerUptime
         private DateTime fEnabledTimestamp = DateTime.MinValue;
-        private bool fGotLogin;
+        private Boolean fGotLogin;
         private CServerInfo fServerInfo;
         private DateTime fLastVersionCheckTimestamp;
         private Dictionary<String, String> fFriendlyMaps = null;
         private Dictionary<String, String> fFriendlyModes = null;
-        private int fLastPlayerCount;
+        private Int32 fLastPlayerCount;
         private DateTime fLastListPlayersTimestamp;
         private String fHost;
         private String fPort;
-        private int fMaxPlayers;
-        private bool fJustConnected;
-        private int fAfterPlayers;
-        private int fLastUptime;
-        private int fLastMaxPlayers;
-        private double fSumOfSeconds;
-        private int fHighPlayerCount;
-        private bool fRestartInitiated;
+        private Int32 fMaxPlayers;
+        private Boolean fJustConnected;
+        private Int32 fAfterPlayers;
+        private Int32 fLastUptime;
+        private Int32 fLastMaxPlayers;
+        private Double fSumOfSeconds;
+        private Int32 fHighPlayerCount;
+        private Boolean fRestartInitiated;
         private Hashtable fConfigSettings;
         private Dictionary<String, DateTime> fConfigTimestamp;
 
         // Settings support
-        private Dictionary<int, Type> fEasyTypeDict = null;
-        private Dictionary<int, Type> fBoolDict = null;
-        private Dictionary<int, Type> fListStrDict = null;
+        private Dictionary<Int32, Type> fEasyTypeDict = null;
+        private Dictionary<Int32, Type> fBoolDict = null;
+        private Dictionary<Int32, Type> fListStrDict = null;
 
         // Settings
 
         /* ===== SECTION 1 - Settings ===== */
 
-        public int DebugLevel;
-        public bool EnableLogToFile;  // if true, sandbox must not be in sandbox!
+        public Int32 DebugLevel;
+        public Boolean EnableLogToFile;  // if true, sandbox must not be in sandbox!
         public String LogFile;
-        public bool EnableWebLog;
-        public int BlazeDisconnectHeuristic; // deprecated
-        public double BlazeDisconnectHeuristicPercent;
-        public double BlazeDisconnectWindowSeconds;
-        public bool EnableRestartOnBlaze;
-        public int RestartOnBlazeDelay;
-        public bool EnableEmailOnBlaze;
+        public Boolean EnableWebLog;
+        public Int32 BlazeDisconnectHeuristic; // deprecated
+        public Double BlazeDisconnectHeuristicPercent;
+        public Double BlazeDisconnectWindowSeconds;
+        public Boolean EnableRestartOnBlaze;
+        public Int32 RestartOnBlazeDelay;
+        public Boolean EnableEmailOnBlaze;
 
         /* ===== SECTION 2 - Server Description ===== */
 
@@ -142,8 +141,8 @@ namespace PRoConEvents
         public String EmailSubject;
         public List<String> EmailMessage;
         public String SMTPHostname;
-        public int SMTPPort;
-        public bool SMTPUseSSL;
+        public Int32 SMTPPort;
+        public Boolean SMTPUseSSL;
         public String SMTPUsername;
         public String SMTPPassword;
 
@@ -172,22 +171,22 @@ namespace PRoConEvents
             fConfigSettings = new Hashtable();
             fConfigTimestamp = new Dictionary<String, DateTime>();
 
-            fEasyTypeDict = new Dictionary<int, Type>();
-            fEasyTypeDict.Add(0, typeof(int));
+            fEasyTypeDict = new Dictionary<Int32, Type>();
+            fEasyTypeDict.Add(0, typeof(Int32));
             fEasyTypeDict.Add(1, typeof(Int16));
             fEasyTypeDict.Add(2, typeof(Int32));
             fEasyTypeDict.Add(3, typeof(Int64));
-            fEasyTypeDict.Add(4, typeof(float));
-            fEasyTypeDict.Add(5, typeof(long));
+            fEasyTypeDict.Add(4, typeof(Single));
+            fEasyTypeDict.Add(5, typeof(Int64));
             fEasyTypeDict.Add(6, typeof(String));
-            fEasyTypeDict.Add(7, typeof(string));
-            fEasyTypeDict.Add(8, typeof(double));
+            fEasyTypeDict.Add(7, typeof(String));
+            fEasyTypeDict.Add(8, typeof(Double));
 
-            fBoolDict = new Dictionary<int, Type>();
+            fBoolDict = new Dictionary<Int32, Type>();
             fBoolDict.Add(0, typeof(Boolean));
-            fBoolDict.Add(1, typeof(bool));
+            fBoolDict.Add(1, typeof(Boolean));
 
-            fListStrDict = new Dictionary<int, Type>();
+            fListStrDict = new Dictionary<Int32, Type>();
             fListStrDict.Add(0, typeof(String[]));
 
             /* Settings */
@@ -383,7 +382,7 @@ namespace PRoConEvents
             try
             {
                 String tmp = strVariable;
-                int pipeIndex = strVariable.IndexOf('|');
+                Int32 pipeIndex = strVariable.IndexOf('|');
                 if (pipeIndex >= 0)
                 {
                     pipeIndex++;
@@ -449,7 +448,7 @@ namespace PRoConEvents
             }
         }
 
-        private bool ValidateSettings(String strVariable, String strValue)
+        private Boolean ValidateSettings(String strVariable, String strValue)
         {
             try
             {
@@ -547,7 +546,7 @@ namespace PRoConEvents
             ConsoleWrite("^bEnabled!^n Version = " + GetPluginVersion());
 
             Thread pluginStartup = new Thread(
-                delegate()
+                delegate ()
                 {
                     GatherProconGoodies();
 
@@ -611,8 +610,8 @@ namespace PRoConEvents
 
                 fJustConnected = false;
 
-                bool resetWindow = false;
-                bool blazed = false;
+                Boolean resetWindow = false;
+                Boolean blazed = false;
 
                 // Check conditions
                 if (fServerCrashed)
@@ -627,7 +626,7 @@ namespace PRoConEvents
                 }
                 else if (fLastListPlayersTimestamp != DateTime.MinValue)
                 {
-                    double seconds = DateTime.Now.Subtract(fLastListPlayersTimestamp).TotalSeconds;
+                    Double seconds = DateTime.Now.Subtract(fLastListPlayersTimestamp).TotalSeconds;
                     fSumOfSeconds = fSumOfSeconds + seconds;
                     if (seconds > MAX_LIST_PLAYERS_SECS)
                     {
@@ -636,19 +635,19 @@ namespace PRoConEvents
                     }
                     else
                     {
-                        double current = players.Count;
-                        double dLost = 0;
+                        Double current = players.Count;
+                        Double dLost = 0;
                         if (current < Convert.ToDouble(fLastPlayerCount))
                         {
                             dLost = fLastPlayerCount - current;
                         }
-                        double dHighLost = 0;
+                        Double dHighLost = 0;
                         if (current < fHighPlayerCount)
                         {
                             dHighLost = fHighPlayerCount - current;
                         }
-                        double dLast = Math.Max(1, fLastPlayerCount); // make sure divisor is never 0
-                        double dHigh = Math.Max(1.0, fHighPlayerCount); // make sure divisor is never 0
+                        Double dLast = Math.Max(1, fLastPlayerCount); // make sure divisor is never 0
+                        Double dHigh = Math.Max(1.0, fHighPlayerCount); // make sure divisor is never 0
 
                         DebugWrite("^9Last = " + fLastPlayerCount + ", " + " current = " + current + ", lost = " + dLost + ", ratio = " + (dLost * 100.0 / dLast).ToString("F1") + ", window = " + fSumOfSeconds.ToString("F0") + ", high  = " + fHighPlayerCount + ", high lost = " + dHighLost + ", window ratio = " + (dHighLost * 100.0 / dHigh).ToString("F1"), 4);
 
@@ -697,7 +696,7 @@ namespace PRoConEvents
                         ConsoleWarn(" ");
 
                         Thread restartThread = new Thread(
-                            delegate()
+                            delegate ()
                             {
                                 fRestartInitiated = true;
 
@@ -741,7 +740,7 @@ namespace PRoConEvents
 
             try
             {
-                bool newMapMode = false;
+                Boolean newMapMode = false;
 
                 if (fServerInfo == null || fServerInfo.GameMode != serverInfo.GameMode || fServerInfo.Map != serverInfo.Map)
                 {
@@ -778,7 +777,7 @@ namespace PRoConEvents
             }
         }
 
-        public override void OnMaxPlayers(int limit)
+        public override void OnMaxPlayers(Int32 limit)
         {
             UpdateConfig("vars_maxPlayers", limit);
             if (!fIsEnabled) return;
@@ -797,81 +796,81 @@ namespace PRoConEvents
 
         #region Configuration
 
-        public override void OnVersion(string serverType, string version) { UpdateConfig("version", serverType + "/" + version); }
+        public override void OnVersion(String serverType, String version) { UpdateConfig("version", serverType + "/" + version); }
 
-        public override void OnServerName(string serverName) { UpdateConfig("vars_serverName", serverName); }
+        public override void OnServerName(String serverName) { UpdateConfig("vars_serverName", serverName); }
 
-        public override void OnServerDescription(string serverDescription) { UpdateConfig("vars_serverDescription", serverDescription); }
+        public override void OnServerDescription(String serverDescription) { UpdateConfig("vars_serverDescription", serverDescription); }
 
-        public override void OnServerMessage(string serverMessage) { UpdateConfig("vars_serverMessage", serverMessage); } // BF3
+        public override void OnServerMessage(String serverMessage) { UpdateConfig("vars_serverMessage", serverMessage); } // BF3
 
-        public override void OnPunkbuster(bool isEnabled) { UpdateConfig("punkBuster_activate", isEnabled); } // punkBuster.activate?
+        public override void OnPunkbuster(Boolean isEnabled) { UpdateConfig("punkBuster_activate", isEnabled); } // punkBuster.activate?
 
-        public override void OnRanked(bool isEnabled) { UpdateConfig("vars_ranked", isEnabled); }
+        public override void OnRanked(Boolean isEnabled) { UpdateConfig("vars_ranked", isEnabled); }
 
-        public override void OnIdleTimeout(int limit) { UpdateConfig("vars_idleTimeout", limit); }
+        public override void OnIdleTimeout(Int32 limit) { UpdateConfig("vars_idleTimeout", limit); }
 
-        public override void OnIdleBanRounds(int limit) { UpdateConfig("vars_idleBanRounds", limit); } //BF3
+        public override void OnIdleBanRounds(Int32 limit) { UpdateConfig("vars_idleBanRounds", limit); } //BF3
 
-        public override void OnRoundRestartPlayerCount(int limit) { UpdateConfig("vars_roundRestartPlayerCount", limit); }
+        public override void OnRoundRestartPlayerCount(Int32 limit) { UpdateConfig("vars_roundRestartPlayerCount", limit); }
 
-        public override void OnRoundStartPlayerCount(int limit) { UpdateConfig("vars_roundStartPlayerCount", limit); }
+        public override void OnRoundStartPlayerCount(Int32 limit) { UpdateConfig("vars_roundStartPlayerCount", limit); }
 
-        public override void OnGameModeCounter(int limit) { UpdateConfig("vars_gameModeCounter", limit); }
+        public override void OnGameModeCounter(Int32 limit) { UpdateConfig("vars_gameModeCounter", limit); }
 
-        public override void OnCtfRoundTimeModifier(int limit) { UpdateConfig("vars_ctfRoundTimeModifier", limit); } // BF3
+        public override void OnCtfRoundTimeModifier(Int32 limit) { UpdateConfig("vars_ctfRoundTimeModifier", limit); } // BF3
 
-        public override void OnRoundLockdownCountdown(int limit) { UpdateConfig("vars_roundLockdownCountdown", limit); }
+        public override void OnRoundLockdownCountdown(Int32 limit) { UpdateConfig("vars_roundLockdownCountdown", limit); }
 
-        public override void OnRoundWarmupTimeout(int limit) { UpdateConfig("vars_roundWarmupTimeout", limit); }
+        public override void OnRoundWarmupTimeout(Int32 limit) { UpdateConfig("vars_roundWarmupTimeout", limit); }
 
-        public override void OnPremiumStatus(bool isEnabled) { UpdateConfig("vars_premiumStatus", isEnabled); }
+        public override void OnPremiumStatus(Boolean isEnabled) { UpdateConfig("vars_premiumStatus", isEnabled); }
 
-        public override void OnGunMasterWeaponsPreset(int preset) { UpdateConfig("vars_gunMasterWeaponsPreset", preset); }
+        public override void OnGunMasterWeaponsPreset(Int32 preset) { UpdateConfig("vars_gunMasterWeaponsPreset", preset); }
 
-        public override void OnVehicleSpawnAllowed(bool isEnabled) { UpdateConfig("vars_vehicleSpawnAllowed", isEnabled); }
+        public override void OnVehicleSpawnAllowed(Boolean isEnabled) { UpdateConfig("vars_vehicleSpawnAllowed", isEnabled); }
 
-        public override void OnVehicleSpawnDelay(int limit) { UpdateConfig("vars_vehicleSpawnDelay", limit); }
+        public override void OnVehicleSpawnDelay(Int32 limit) { UpdateConfig("vars_vehicleSpawnDelay", limit); }
 
-        public override void OnBulletDamage(int limit) { UpdateConfig("vars_bulletDamage", limit); }
+        public override void OnBulletDamage(Int32 limit) { UpdateConfig("vars_bulletDamage", limit); }
 
-        public override void OnOnlySquadLeaderSpawn(bool isEnabled) { UpdateConfig("vars_onlySquadLeaderSpawn", isEnabled); }
+        public override void OnOnlySquadLeaderSpawn(Boolean isEnabled) { UpdateConfig("vars_onlySquadLeaderSpawn", isEnabled); }
 
-        public override void OnSoldierHealth(int limit) { UpdateConfig("vars_solderHealth", limit); }
+        public override void OnSoldierHealth(Int32 limit) { UpdateConfig("vars_solderHealth", limit); }
 
-        public override void OnPlayerManDownTime(int limit) { UpdateConfig("vars_playerManDownTime", limit); }
+        public override void OnPlayerManDownTime(Int32 limit) { UpdateConfig("vars_playerManDownTime", limit); }
 
-        public override void OnPlayerRespawnTime(int limit) { UpdateConfig("vars_playerRespawnTime", limit); }
+        public override void OnPlayerRespawnTime(Int32 limit) { UpdateConfig("vars_playerRespawnTime", limit); }
 
-        public override void OnHud(bool isEnabled) { UpdateConfig("vars_hud", isEnabled); }
+        public override void OnHud(Boolean isEnabled) { UpdateConfig("vars_hud", isEnabled); }
 
-        public override void OnNameTag(bool isEnabled) { UpdateConfig("vars_nameTag", isEnabled); }
+        public override void OnNameTag(Boolean isEnabled) { UpdateConfig("vars_nameTag", isEnabled); }
 
-        public override void OnFriendlyFire(bool isEnabled) { UpdateConfig("vars_friendlyFire", isEnabled); }
+        public override void OnFriendlyFire(Boolean isEnabled) { UpdateConfig("vars_friendlyFire", isEnabled); }
 
-        public override void OnUnlockMode(string mode) { UpdateConfig("vars_unlockMode", mode); } //BF3
+        public override void OnUnlockMode(String mode) { UpdateConfig("vars_unlockMode", mode); } //BF3
 
-        public override void OnTeamBalance(bool isEnabled) { UpdateConfig("vars_autoBalance", isEnabled); } // vars.autoBalance too
+        public override void OnTeamBalance(Boolean isEnabled) { UpdateConfig("vars_autoBalance", isEnabled); } // vars.autoBalance too
 
-        public override void OnKillCam(bool isEnabled) { UpdateConfig("vars_killCam", isEnabled); }
+        public override void OnKillCam(Boolean isEnabled) { UpdateConfig("vars_killCam", isEnabled); }
 
-        public override void OnMiniMap(bool isEnabled) { UpdateConfig("vars_miniMap", isEnabled); }
+        public override void OnMiniMap(Boolean isEnabled) { UpdateConfig("vars_miniMap", isEnabled); }
 
-        public override void OnCrossHair(bool isEnabled) { UpdateConfig("vars_crossHair", isEnabled); } // not supported?
+        public override void OnCrossHair(Boolean isEnabled) { UpdateConfig("vars_crossHair", isEnabled); } // not supported?
 
-        public override void On3dSpotting(bool isEnabled) { UpdateConfig("vars_3dSpotting", isEnabled); }
+        public override void On3dSpotting(Boolean isEnabled) { UpdateConfig("vars_3dSpotting", isEnabled); }
 
-        public override void OnMiniMapSpotting(bool isEnabled) { UpdateConfig("vars_miniMapSpotting", isEnabled); }
+        public override void OnMiniMapSpotting(Boolean isEnabled) { UpdateConfig("vars_miniMapSpotting", isEnabled); }
 
-        public override void OnThirdPersonVehicleCameras(bool isEnabled) { UpdateConfig("vars_3pCam", isEnabled); }
+        public override void OnThirdPersonVehicleCameras(Boolean isEnabled) { UpdateConfig("vars_3pCam", isEnabled); }
 
-        public override void OnTeamKillCountForKick(int limit) { UpdateConfig("vars_teamKillCountForKick", limit); }
+        public override void OnTeamKillCountForKick(Int32 limit) { UpdateConfig("vars_teamKillCountForKick", limit); }
 
-        public override void OnTeamKillValueIncrease(int limit) { UpdateConfig("vars_teamKillValueIncrease", limit); }
+        public override void OnTeamKillValueIncrease(Int32 limit) { UpdateConfig("vars_teamKillValueIncrease", limit); }
 
-        public override void OnTeamKillValueDecreasePerSecond(int limit) { UpdateConfig("vars_teamKillValueDecreasePerSecond", limit); }
+        public override void OnTeamKillValueDecreasePerSecond(Int32 limit) { UpdateConfig("vars_teamKillValueDecreasePerSecond", limit); }
 
-        public override void OnTeamKillValueForKick(int limit) { UpdateConfig("vars_teamKillValueForKick", limit); }
+        public override void OnTeamKillValueForKick(Int32 limit) { UpdateConfig("vars_teamKillValueForKick", limit); }
 
         #endregion Configuration
 
@@ -882,12 +881,12 @@ namespace PRoConEvents
             InnerUpdateConfig(key, val);
         }
 
-        private void UpdateConfig(String key, bool val)
+        private void UpdateConfig(String key, Boolean val)
         {
             InnerUpdateConfig(key, val);
         }
 
-        private void UpdateConfig(String key, int val)
+        private void UpdateConfig(String key, Int32 val)
         {
             InnerUpdateConfig(key, Convert.ToDouble(val));
         }
@@ -909,7 +908,7 @@ namespace PRoConEvents
             }
         }
 
-        private void Failure(String type, int lastPlayerCount)
+        private void Failure(String type, Int32 lastPlayerCount)
         {
             if (fServerInfo == null)
             {
@@ -949,7 +948,7 @@ namespace PRoConEvents
             if (EnableWebLog && type.CompareTo("BLAZE_DISCONNECT") == 0)
             {
                 Thread webLogThread = new Thread(
-                    delegate()
+                    delegate ()
                     {
                         NameValueCollection postData = new NameValueCollection();
 
@@ -966,7 +965,7 @@ namespace PRoConEvents
                         postData.Add("players", players);
                         postData.Add("uptime", fLastUptime.ToString());
                         postData.Add("battleloglink", BattlelogLink);
-                        postData.Add("serverconfig", String.Empty); // Include json-base64 serverconfig string
+                        postData.Add("serverconfig", String.Empty); // Include json-base64 serverconfig String
                         postData.Add("additionalinfo", AdditionalInformation);
 
                         String jsonConfig = JSON.JsonEncode(fConfigSettings);
@@ -993,7 +992,7 @@ namespace PRoConEvents
             if (EnableEmailOnBlaze && type.CompareTo("BLAZE_DISCONNECT") == 0)
             {
                 Thread mailSendThread = new Thread(
-                    delegate()
+                    delegate ()
                     {
                         try
                         {
@@ -1095,7 +1094,7 @@ namespace PRoConEvents
             if (DebugLevel >= 3) ConsoleWrite(e.ToString(), MessageType.Exception);
         }
 
-        public void DebugWrite(String msg, int level)
+        public void DebugWrite(String msg, Int32 level)
         {
             if (DebugLevel >= level) ConsoleWrite(msg, MessageType.Normal);
         }
@@ -1279,7 +1278,7 @@ namespace PRoConEvents
             ServerCommand("vars.teamKillValueForKick");
         }
 
-        private void ValidateInt(ref int val, String propName, int def)
+        private void ValidateInt(ref Int32 val, String propName, Int32 def)
         {
             if (val < 0)
             {
@@ -1289,7 +1288,7 @@ namespace PRoConEvents
             }
         }
 
-        private void ValidateIntRange(ref int val, String propName, int min, int max, int def, bool zeroOK)
+        private void ValidateIntRange(ref Int32 val, String propName, Int32 min, Int32 max, Int32 def, Boolean zeroOK)
         {
             if (zeroOK && val == 0) return;
             if (val < min || val > max)
@@ -1300,7 +1299,7 @@ namespace PRoConEvents
             }
         }
 
-        private void ValidateDouble(ref double val, String propName, double def)
+        private void ValidateDouble(ref Double val, String propName, Double def)
         {
             if (val < 0)
             {
@@ -1310,7 +1309,7 @@ namespace PRoConEvents
             }
         }
 
-        private void ValidateDoubleRange(ref double val, String propName, double min, double max, double def, bool zeroOK)
+        private void ValidateDoubleRange(ref Double val, String propName, Double min, Double max, Double def, Boolean zeroOK)
         {
             if (zeroOK && val == 0.0) return;
             if (val < min || val > max)
@@ -1383,14 +1382,14 @@ namespace PRoConEvents
                 XmlNodeList rows = xml.SelectNodes("//report");
                 if (DebugLevel >= 8) ConsoleDebug("CheckForPluginUpdate: # rows = " + rows.Count);
                 if (rows.Count == 0) return;
-                Dictionary<String, int> versions = new Dictionary<String, int>();
+                Dictionary<String, Int32> versions = new Dictionary<String, Int32>();
                 foreach (XmlNode tr in rows)
                 {
                     XmlNode ver = tr.SelectSingleNode("version");
                     XmlNode count = tr.SelectSingleNode("sum_in_use");
                     if (ver != null && count != null)
                     {
-                        int test = 0;
+                        Int32 test = 0;
                         XmlNode major = ver.SelectSingleNode("major");
                         if (!Int32.TryParse(major.InnerText, out test)) continue;
                         XmlNode minor = ver.SelectSingleNode("minor");
@@ -1401,14 +1400,14 @@ namespace PRoConEvents
                         if (!Int32.TryParse(build.InnerText, out test)) continue;
                         String vt = major.InnerText + "." + minor.InnerText + "." + maint.InnerText + "." + build.InnerText;
                         if (DebugLevel >= 8) ConsoleDebug("CheckForPluginUpdate: Version: " + vt + ", Count: " + count.InnerText);
-                        int n = 0;
+                        Int32 n = 0;
                         if (!Int32.TryParse(count.InnerText, out n)) continue;
                         versions[vt] = n;
                     }
                 }
 
                 // Select current version and any "later" versions
-                int usage = 0;
+                Int32 usage = 0;
                 String myVersion = GetPluginVersion();
                 if (!versions.TryGetValue(myVersion, out usage))
                 {
@@ -1423,7 +1422,7 @@ namespace PRoConEvents
                 List<String> byNumeric = new List<String>();
                 byNumeric.AddRange(versions.Keys);
                 // Sort numerically descending
-                byNumeric.Sort(delegate(String lhs, String rhs)
+                byNumeric.Sort(delegate (String lhs, String rhs)
                 {
                     if (lhs == rhs) return 0;
                     if (String.IsNullOrEmpty(lhs)) return 1;
@@ -1440,7 +1439,7 @@ namespace PRoConEvents
                     DebugWrite(u + " (" + String.Format("{0:X8}", VersionToNumeric(u)) + "), count = " + versions[u], 7);
                 }
 
-                int position = byNumeric.IndexOf(myVersion);
+                Int32 position = byNumeric.IndexOf(myVersion);
 
                 DebugWrite("CheckForPluginUpdate: found " + position + " newer versions", 5);
 
@@ -1448,11 +1447,11 @@ namespace PRoConEvents
                 {
                     // Newer versions found
                     // Find the newest version with the largest number of usages
-                    int hasMost = -1;
-                    int most = 0;
-                    for (int i = position - 1; i >= 0; --i)
+                    Int32 hasMost = -1;
+                    Int32 most = 0;
+                    for (Int32 i = position - 1; i >= 0; --i)
                     {
-                        int newerVersionCount = versions[byNumeric[i]];
+                        Int32 newerVersionCount = versions[byNumeric[i]];
                         if (hasMost == -1 || most < newerVersionCount)
                         {
                             // Skip newer versions that don't have enough usage yet
@@ -1486,11 +1485,11 @@ namespace PRoConEvents
         private uint VersionToNumeric(String ver)
         {
             uint numeric = 0;
-            byte part = 0;
+            Byte part = 0;
             Match m = Regex.Match(ver, @"^\s*([0-9]+)\.([0-9]+)\.([0-9]+)\.([0-9]+)(\w*)\s*$");
             if (m.Success)
             {
-                for (int i = 1; i < 5; ++i)
+                for (Int32 i = 1; i < 5; ++i)
                 {
                     if (!Byte.TryParse(m.Groups[i].Value, out part))
                     {
@@ -1509,12 +1508,12 @@ namespace PRoConEvents
 
     static class FailLogUtils
     {
-        public static String ArrayToString(double[] a)
+        public static String ArrayToString(Double[] a)
         {
             String ret = String.Empty;
-            bool first = true;
+            Boolean first = true;
             if (a == null || a.Length == 0) return ret;
-            for (int i = 0; i < a.Length; ++i)
+            for (Int32 i = 0; i < a.Length; ++i)
             {
                 if (first)
                 {
@@ -1529,16 +1528,16 @@ namespace PRoConEvents
             return ret;
         }
 
-        public static double[] ParseNumArray(String s)
+        public static Double[] ParseNumArray(String s)
         {
-            double[] nums = new double[3] { -1, -1, -1 }; // -1 indicates a syntax error
+            Double[] nums = new Double[3] { -1, -1, -1 }; // -1 indicates a syntax error
             if (String.IsNullOrEmpty(s)) return nums;
             if (!s.Contains(",")) return nums;
             String[] strs = s.Split(new Char[] { ',' });
             if (strs.Length != 3) return nums;
-            for (int i = 0; i < nums.Length; ++i)
+            for (Int32 i = 0; i < nums.Length; ++i)
             {
-                bool parsedOk = Double.TryParse(strs[i], out nums[i]);
+                Boolean parsedOk = Double.TryParse(strs[i], out nums[i]);
                 if (!parsedOk)
                 {
                     nums[i] = -1;
