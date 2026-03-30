@@ -32,8 +32,9 @@ using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Web;
 using System.Xml;
+
+using Flurl.Http;
 
 using PRoCon.Core;
 using PRoCon.Core.Battlemap;
@@ -1149,13 +1150,19 @@ namespace PRoConEvents
         {
             try
             {
-                WebClient webClient = new WebClient();
-                String userAgent = "Mozilla/5.0 (compatible; Procon 1; FailLog)";
-                webClient.Headers.Add("user-agent", userAgent);
-
                 String url = String.Format("http://dev.myrcon.com/procon/blazereport/report.php?key=HhcF93olvLgHh9UTYlqs&ver={0}", EscapeRequestString(GetPluginVersion()));
 
-                String response = Encoding.UTF8.GetString(webClient.UploadValues(url, "POST", postData));
+                Dictionary<String, String> formData = new Dictionary<String, String>();
+                foreach (String key in postData.AllKeys)
+                {
+                    formData[key] = postData[key];
+                }
+
+                String response = url
+                    .WithHeader("user-agent", "Mozilla/5.0 (compatible; Procon 1; FailLog)")
+                    .PostUrlEncodedAsync(formData)
+                    .ReceiveString()
+                    .Result;
 
                 ConsoleDebug(response);
 
