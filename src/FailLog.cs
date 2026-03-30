@@ -23,6 +23,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
@@ -1105,7 +1106,7 @@ namespace PRoConEvents
             try
             {
                 if (!Path.IsPathRooted(path))
-                    path = Path.Combine(Directory.GetParent(Application.ExecutablePath).FullName, path);
+                    path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, path);
 
                 // Add newline
                 line = line + "\n";
